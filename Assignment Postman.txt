@@ -1,0 +1,220 @@
+Happy Path (things that should work):
+
+Calculate bonus as MANAGER — POST with valid data
+Calculate bonus as ADMIN — POST with valid data
+Employee views own bonuses — GET /bonus/my
+Admin views all bonuses — GET /bonus/all
+
+Validation Tests (things that should fail correctly):
+
+Duplicate review — same employeeId + same year = 409 Conflict
+Employee not found — wrong employeeId = 404 Not Found
+Invalid KPI score — taskCompletion: 30 (over max 25) = 400 Bad Request
+
+Security Tests (role based):
+
+EMPLOYEE tries to calculate bonus — should get 403 Forbidden
+MANAGER tries to view all bonuses — should get 403 Forbidden
+Wrong password — should get 401 Unauthorized
+
+
+
+
+
+
+
+Here are all 10 tests:
+
+---
+
+### Happy Path Tests
+
+**Test 1 — MANAGER calculates bonus**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `bob` / `password123`
+- Body:
+```json
+{
+    "employeeId": 3,
+    "reviewYear": 2025,
+    "taskCompletion": 20,
+    "attendance": 10,
+    "teamCollaboration": 10,
+    "problemSolving": 10,
+    "communication": 7,
+    "leadership": 7,
+    "clientSatisfaction": 7
+}
+```
+**Expected:** 200 OK
+```json
+{
+    "employeeId": 3,
+    "employeeName": "Carol White",
+    "category": "Silver Tier",
+    "bonusPercentage": 12.0,
+    "bonusAmount": 10800.00,
+    "totalCompensation": 100800.00
+}
+```
+
+---
+
+**Test 2 — ADMIN calculates bonus**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `carol` / `password123`
+- Body:
+```json
+{
+    "employeeId": 2,
+    "reviewYear": 2025,
+    "taskCompletion": 10,
+    "attendance": 8,
+    "teamCollaboration": 8,
+    "problemSolving": 8,
+    "communication": 5,
+    "leadership": 5,
+    "clientSatisfaction": 5
+}
+```
+**Expected:** 200 OK
+```json
+{
+    "employeeId": 2,
+    "employeeName": "Bob Smith",
+    "category": "Bronze Tier",
+    "bonusPercentage": 5.0,
+    "bonusAmount": 3750.00,
+    "totalCompensation": 78750.00
+}
+```
+
+---
+
+**Test 3 — EMPLOYEE views own bonuses**
+- Method: `GET`
+- URL: `http://localhost:8080/api/bonus/my`
+- Auth: Basic Auth — `alice` / `password123`
+- No Body needed
+
+**Expected:** 200 OK — list of alice's bonus records
+
+---
+
+**Test 4 — ADMIN views all bonuses**
+- Method: `GET`
+- URL: `http://localhost:8080/api/bonus/all`
+- Auth: Basic Auth — `carol` / `password123`
+- No Body needed
+
+**Expected:** 200 OK — list of all bonus records in the system
+
+---
+
+### Validation Tests
+
+**Test 5 — Duplicate review**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `bob` / `password123`
+- Body: exact same as Test 1 (same employeeId: 3, reviewYear: 2025)
+
+**Expected:** 409 Conflict
+```json
+{
+    "error": "Review already exists for employee 3 for year 2025"
+}
+```
+
+---
+
+**Test 6 — Employee not found**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `bob` / `password123`
+- Body:
+```json
+{
+    "employeeId": 999,
+    "reviewYear": 2025,
+    "taskCompletion": 20,
+    "attendance": 10,
+    "teamCollaboration": 10,
+    "problemSolving": 10,
+    "communication": 7,
+    "leadership": 7,
+    "clientSatisfaction": 7
+}
+```
+**Expected:** 404 Not Found
+```json
+{
+    "error": "Employee not found with id: 999"
+}
+```
+
+---
+
+**Test 7 — Invalid KPI score**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `bob` / `password123`
+- Body:
+```json
+{
+    "employeeId": 1,
+    "reviewYear": 2025,
+    "taskCompletion": 30,
+    "attendance": 10,
+    "teamCollaboration": 10,
+    "problemSolving": 10,
+    "communication": 7,
+    "leadership": 7,
+    "clientSatisfaction": 7
+}
+```
+**Expected:** 400 Bad Request
+```json
+{
+    "taskCompletion": "must be less than or equal to 25"
+}
+```
+
+---
+
+### Security Tests
+
+**Test 8 — EMPLOYEE tries to calculate bonus**
+- Method: `POST`
+- URL: `http://localhost:8080/api/performances/calculate`
+- Auth: Basic Auth — `alice` / `password123`
+- Body: any valid JSON body
+
+**Expected:** 403 Forbidden
+
+---
+
+**Test 9 — MANAGER tries to view all bonuses**
+- Method: `GET`
+- URL: `http://localhost:8080/api/bonus/all`
+- Auth: Basic Auth — `bob` / `password123`
+- No Body needed
+
+**Expected:** 403 Forbidden
+
+---
+
+**Test 10 — Wrong password**
+- Method: `GET`
+- URL: `http://localhost:8080/api/bonus/my`
+- Auth: Basic Auth — `alice` / `wrongpassword`
+- No Body needed
+
+**Expected:** 401 Unauthorized
+
+---
+
+
+
